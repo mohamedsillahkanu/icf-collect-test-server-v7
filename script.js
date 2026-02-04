@@ -1,5 +1,5 @@
 // ICF Collect - Main Application Script
-// Version 3.1 - Fixed Authentication & Field Handlers
+// Version 3.2 - Added HTML Download Feature
 
 // ============================================
 // CORE STATE & CONFIGURATION
@@ -97,7 +97,8 @@ const ICONS = {
     'crosshair': '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="22" y1="12" x2="18" y2="12"></line><line x1="6" y1="12" x2="2" y2="12"></line><line x1="12" y1="6" x2="12" y2="2"></line><line x1="12" y1="22" x2="12" y2="18"></line></svg>',
     'rocket': '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z"></path><path d="m12 15-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"></path><path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0"></path><path d="M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5"></path></svg>',
     'list': '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg>',
-    'database': '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"></ellipse><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"></path><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"></path></svg>'
+    'database': '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"></ellipse><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"></path><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"></path></svg>',
+    'download': '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>'
 };
 
 function getIcon(name, size = 16) {
@@ -619,6 +620,7 @@ async function showHome() {
             html += '<div style="display:flex;gap:8px;">';
             html += '<button onclick="event.stopPropagation();loadForm('+form.id+');" class="modal-btn primary" style="padding:8px 14px;font-size:11px;">'+getIcon('edit', 12)+' Edit</button>';
             html += '<button onclick="event.stopPropagation();previewFormById('+form.id+');" class="modal-btn" style="padding:8px 14px;font-size:11px;background:#17a2b8;color:white;">'+getIcon('eye', 12)+' Preview</button>';
+            html += '<button onclick="event.stopPropagation();downloadFormById('+form.id+');" class="modal-btn" style="padding:8px 14px;font-size:11px;background:#0f9d58;color:white;">'+getIcon('download', 12)+' HTML</button>';
             html += '<button onclick="event.stopPropagation();if(confirm(\'Delete this form?\'))deleteFormAndRefresh('+form.id+');" class="modal-btn danger" style="padding:8px 14px;font-size:11px;">'+getIcon('trash-2', 12)+'</button>';
             html += '</div></div>';
         });
@@ -632,6 +634,11 @@ async function showHome() {
 async function previewFormById(formId) {
     await loadForm(formId);
     previewForm();
+}
+
+async function downloadFormById(formId) {
+    await loadForm(formId);
+    downloadFormAsHtml();
 }
 
 async function deleteFormAndRefresh(formId) {
@@ -1145,6 +1152,7 @@ function renderFormViewer() {
     let html = '<div class="viewer-nav">';
     html += '<button class="viewer-back-btn" onclick="exitViewer()">'+getIcon('arrow-left', 14)+' Exit Preview</button>';
     html += '<button class="viewer-nav-btn active" style="background:#004080;color:white;">'+getIcon('edit-3', 14)+' Form</button>';
+    html += '<button class="viewer-nav-btn" onclick="downloadFormAsHtml()" style="background:#0f9d58;color:white;">'+getIcon('download', 14)+' Download HTML</button>';
     html += '<div class="connection-status '+(navigator.onLine ? 'online' : 'offline')+'">'+(navigator.onLine ? getIcon('wifi', 12)+' Online' : getIcon('wifi-off', 12)+' Offline')+'</div>';
     html += '</div>';
     
@@ -1360,6 +1368,535 @@ async function submitViewerForm(event) {
 }
 
 // ============================================
+// DOWNLOAD FORM AS HTML
+// ============================================
+
+function downloadFormAsHtml() {
+    if (state.fields.length === 0) {
+        showNotification('Add some fields first before downloading', 'warning');
+        return;
+    }
+
+    const titleInput = document.getElementById('formTitle');
+    const formTitle = titleInput ? titleInput.value : 'Data Collection Form';
+    const safeTitle = formTitle.replace(/[^a-zA-Z0-9\s\-_]/g, '').replace(/\s+/g, '_') || 'form';
+
+    // Build pages from sections
+    const pages = [];
+    let currentPageFields = { title: 'Page 1', fields: [] };
+
+    state.fields.forEach(field => {
+        if (field.type === 'section') {
+            if (currentPageFields.fields.length > 0) pages.push(currentPageFields);
+            currentPageFields = { title: field.label, fields: [] };
+        } else {
+            currentPageFields.fields.push(field);
+        }
+    });
+    if (currentPageFields.fields.length > 0) pages.push(currentPageFields);
+
+    const totalPages = pages.length;
+    const hasSheets = state.sheetsConfig && (state.sheetsConfig.sheetId || state.sheetsConfig.url);
+    const googleScriptUrl = GOOGLE_SCRIPT_URL || '';
+
+    function escHtml(str) {
+        if (!str) return '';
+        return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
+    }
+
+    // Generate field HTML for each page
+    function generateFieldHtml(field) {
+        const req = field.required ? ' required' : '';
+        const reqStar = field.required ? '<span class="req">*</span>' : '';
+        const help = field.helpText ? '<p class="help-text">' + escHtml(field.helpText) + '</p>' : '';
+        const ph = field.placeholder ? ' placeholder="' + escHtml(field.placeholder) + '"' : '';
+        const nm = ' name="' + escHtml(field.name) + '"';
+        let input = '';
+
+        switch (field.type) {
+            case 'text':
+                input = '<input type="text" class="f-input"' + nm + ph + req + '>';
+                break;
+            case 'number':
+                input = '<input type="number" class="f-input"' + nm + ph + req + ' step="any">';
+                break;
+            case 'calculation':
+                input = '<input type="text" class="f-input calc-field"' + nm + ' readonly placeholder="Auto-calculated" data-formula="' + escHtml(field.formula || '') + '">';
+                break;
+            case 'date':
+                input = '<input type="date" class="f-input"' + nm + req + '>';
+                break;
+            case 'time':
+                input = '<input type="time" class="f-input"' + nm + req + '>';
+                break;
+            case 'email':
+                input = '<input type="email" class="f-input"' + nm + ph + req + '>';
+                break;
+            case 'phone':
+                input = '<input type="tel" class="f-input"' + nm + ph + req + '>';
+                break;
+            case 'textarea':
+                input = '<textarea class="f-input f-textarea"' + nm + ph + req + ' rows="4"></textarea>';
+                break;
+            case 'select':
+                input = '<select class="f-input f-select"' + nm + req + '><option value="">-- Select --</option>' +
+                    (field.options || []).map(function(o) { return '<option value="' + escHtml(o) + '">' + escHtml(o) + '</option>'; }).join('') +
+                    '</select>';
+                break;
+            case 'radio':
+                input = '<div class="option-group">' +
+                    (field.options || []).map(function(o) {
+                        return '<label class="option-label"><input type="radio"' + nm + ' value="' + escHtml(o) + '"' + req + '><span class="option-text">' + escHtml(o) + '</span></label>';
+                    }).join('') + '</div>';
+                break;
+            case 'checkbox':
+                input = '<div class="option-group">' +
+                    (field.options || []).map(function(o) {
+                        return '<label class="option-label"><input type="checkbox" name="' + escHtml(field.name) + '" value="' + escHtml(o) + '"><span class="option-text">' + escHtml(o) + '</span></label>';
+                    }).join('') + '</div>';
+                break;
+            case 'yesno':
+                input = '<div class="option-group option-row">' +
+                    '<label class="option-label"><input type="radio"' + nm + ' value="Yes"' + req + '><span class="option-text">Yes</span></label>' +
+                    '<label class="option-label"><input type="radio"' + nm + ' value="No"><span class="option-text">No</span></label>' +
+                    '</div>';
+                break;
+            case 'gps':
+                input = '<div class="gps-group">' +
+                    '<input type="text" class="f-input"' + nm + ' readonly placeholder="Click button to capture GPS"' + req + '>' +
+                    '<button type="button" class="gps-btn" onclick="captureGPS(\'' + escHtml(field.name) + '\')">📍 Capture</button>' +
+                    '</div>';
+                break;
+            case 'rating':
+                var max = field.ratingMax || 5;
+                var stars = '<input type="hidden"' + nm + ' value="">';
+                for (var si = 1; si <= max; si++) {
+                    stars += '<span class="star" data-val="' + si + '" onclick="setRating(\'' + escHtml(field.name) + '\',' + si + ')">★</span>';
+                }
+                input = '<div class="rating-group" data-field="' + escHtml(field.name) + '">' + stars + '</div>';
+                break;
+            case 'period':
+                input = '<input type="month" class="f-input"' + nm + req + '>';
+                break;
+            case 'cascade':
+                if (field.cascadeConfig && field.cascadeConfig.levels) {
+                    input = '<div class="cascade-group" data-field="' + escHtml(field.name) + '">';
+                    field.cascadeConfig.levels.forEach(function(level, idx) {
+                        input += '<select class="f-input f-select cascade-select" data-level="' + idx + '" name="' + escHtml(field.name) + '_level_' + idx + '"' + (idx === 0 ? '' : ' disabled') + '>';
+                        input += '<option value="">-- ' + escHtml(level) + ' --</option></select>';
+                    });
+                    input += '</div>';
+                } else {
+                    input = '<input type="text" class="f-input"' + nm + ph + '>';
+                }
+                break;
+            case 'qrcode':
+                input = '<div class="gps-group">' +
+                    '<input type="text" class="f-input"' + nm + ' readonly placeholder="Scan QR/Barcode"' + req + '>' +
+                    '<button type="button" class="gps-btn" onclick="alert(\'QR scanning requires a native app or camera API.\')">📷 Scan</button>' +
+                    '</div>';
+                break;
+            default:
+                input = '<input type="text" class="f-input"' + nm + ph + req + '>';
+        }
+
+        return '<div class="field-wrap" id="fw-' + escHtml(field.name) + '">' +
+            '<label class="f-label">' + escHtml(field.label) + ' ' + reqStar + '</label>' +
+            input + help + '</div>';
+    }
+
+    // Build all page HTML
+    var pagesHtml = '';
+    pages.forEach(function(page, idx) {
+        pagesHtml += '<div class="form-page" id="page-' + idx + '"' + (idx > 0 ? ' style="display:none;"' : '') + '>';
+        if (totalPages > 1) {
+            pagesHtml += '<div class="page-section-title">' + escHtml(page.title) + '</div>';
+        }
+        page.fields.forEach(function(f) {
+            pagesHtml += generateFieldHtml(f);
+        });
+        pagesHtml += '</div>';
+    });
+
+    // Pagination controls
+    var navHtml = '<div class="form-nav">';
+    if (totalPages > 1) {
+        navHtml += '<button type="button" class="btn btn-outline" id="prevBtn" onclick="prevPage()" style="visibility:hidden;">← Previous</button>';
+        navHtml += '<span class="page-info">Page <span id="pageNum">1</span> of ' + totalPages + '</span>';
+        navHtml += '<button type="button" class="btn btn-primary" id="nextBtn" onclick="nextPage()">Next →</button>';
+    }
+    navHtml += '<button type="submit" class="btn btn-submit" id="submitBtn"' + (totalPages > 1 ? ' style="display:none;"' : '') + '>✓ Submit</button>';
+    navHtml += '</div>';
+
+    // Sheets sync code
+    var sheetsSyncCode = '';
+    if (hasSheets) {
+        sheetsSyncCode = '\n  if (navigator.onLine) {\n' +
+            '    fetch(\'' + escHtml(googleScriptUrl) + '\', {\n' +
+            '      method: \'POST\', mode: \'no-cors\',\n' +
+            '      headers: { \'Content-Type\': \'application/json\' },\n' +
+            '      body: JSON.stringify(data)\n' +
+            '    }).then(function() { showToast(\'Synced to Google Sheets\', \'success\'); })\n' +
+            '      .catch(function(err) { console.warn(\'Sheets sync failed:\', err); });\n  }';
+    } else {
+        sheetsSyncCode = '// Google Sheets not configured';
+    }
+
+    // Generate the complete standalone HTML document
+    var htmlContent = '<!DOCTYPE html>\n' +
+'<html lang="en">\n' +
+'<head>\n' +
+'<meta charset="UTF-8">\n' +
+'<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">\n' +
+'<title>' + escHtml(formTitle) + ' — ICF Collect</title>\n' +
+'<style>\n' +
+'*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}\n' +
+':root{\n' +
+'  --brand:#004080;--brand-dark:#002855;--brand-light:#e8f4fc;\n' +
+'  --accent:#0f9d58;--danger:#dc3545;--warn:#ffc107;\n' +
+'  --bg:#f0f2f5;--card:#ffffff;--text:#1a1a2e;--muted:#6c757d;\n' +
+'  --radius:10px;--shadow:0 2px 12px rgba(0,0,0,0.08);\n' +
+'}\n' +
+'html{font-size:16px;-webkit-text-size-adjust:100%;}\n' +
+'body{font-family:\'Segoe UI\',system-ui,-apple-system,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;line-height:1.5;}\n' +
+'.form-header{background:linear-gradient(135deg,var(--brand),var(--brand-dark));color:#fff;text-align:center;padding:28px 20px 24px;position:relative;overflow:hidden;}\n' +
+'.form-header::after{content:\'\';position:absolute;bottom:-30px;left:-10%;width:120%;height:60px;background:var(--bg);border-radius:50%;}\n' +
+'.form-header img{width:64px;height:64px;border-radius:12px;margin-bottom:12px;border:3px solid rgba(255,255,255,0.3);}\n' +
+'.form-header h1{font-size:1.35rem;font-weight:700;margin-bottom:4px;letter-spacing:-0.02em;}\n' +
+'.form-header p{font-size:0.78rem;opacity:0.8;}\n' +
+'.form-container{max-width:640px;margin:0 auto;padding:20px 16px 40px;}\n' +
+'.form-card{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden;border:1px solid #e9ecef;}\n' +
+'.conn-bar{display:flex;align-items:center;justify-content:center;gap:6px;padding:6px;font-size:0.7rem;font-weight:600;}\n' +
+'.conn-bar.online{background:#d4edda;color:#155724;}\n' +
+'.conn-bar.offline{background:#fff3cd;color:#856404;}\n' +
+'.page-section-title{background:var(--brand-light);color:var(--brand);padding:12px 20px;font-weight:700;font-size:0.9rem;border-bottom:2px solid var(--brand);letter-spacing:-0.01em;}\n' +
+'.page-info{font-size:0.8rem;color:var(--muted);font-weight:600;}\n' +
+'.form-body{padding:20px;}\n' +
+'.field-wrap{margin-bottom:20px;}\n' +
+'.f-label{display:block;font-size:0.82rem;font-weight:600;color:var(--text);margin-bottom:6px;}\n' +
+'.req{color:var(--danger);margin-left:2px;}\n' +
+'.help-text{font-size:0.7rem;color:var(--muted);margin-top:4px;}\n' +
+'.f-input{width:100%;padding:10px 12px;border:2px solid #dee2e6;border-radius:8px;font-size:0.88rem;font-family:inherit;transition:border-color 0.2s,box-shadow 0.2s;background:#fff;color:var(--text);}\n' +
+'.f-input:focus{outline:none;border-color:var(--brand);box-shadow:0 0 0 3px rgba(0,64,128,0.12);}\n' +
+'.f-textarea{resize:vertical;min-height:90px;}\n' +
+'.f-select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'12\' height=\'12\' viewBox=\'0 0 24 24\' fill=\'none\' stroke=\'%236c757d\' stroke-width=\'2.5\'%3E%3Cpolyline points=\'6 9 12 15 18 9\'%3E%3C/polyline%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;padding-right:36px;}\n' +
+'.calc-field{background:#fff9e6;border-color:#ffeaa7;font-weight:600;}\n' +
+'.option-group{display:flex;flex-direction:column;gap:8px;}\n' +
+'.option-row{flex-direction:row;gap:12px;}\n' +
+'.option-label{display:flex;align-items:center;gap:10px;padding:10px 14px;border:2px solid #e9ecef;border-radius:8px;cursor:pointer;transition:all 0.2s;font-size:0.85rem;}\n' +
+'.option-label:hover{border-color:var(--brand);background:var(--brand-light);}\n' +
+'.option-text{flex:1;}\n' +
+'.gps-group{display:flex;gap:8px;align-items:stretch;}\n' +
+'.gps-group .f-input{flex:1;}\n' +
+'.gps-btn{padding:10px 16px;background:var(--brand);color:#fff;border:none;border-radius:8px;font-size:0.82rem;font-weight:600;cursor:pointer;white-space:nowrap;transition:background 0.2s;}\n' +
+'.gps-btn:hover{background:var(--brand-dark);}\n' +
+'.gps-btn:active{transform:scale(0.97);}\n' +
+'.rating-group{display:flex;gap:4px;align-items:center;}\n' +
+'.star{font-size:1.8rem;color:#ddd;cursor:pointer;transition:color 0.15s,transform 0.15s;user-select:none;}\n' +
+'.star:hover,.star.active{color:var(--warn);transform:scale(1.15);}\n' +
+'.cascade-group{display:flex;flex-direction:column;gap:8px;}\n' +
+'.form-nav{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:16px 20px;border-top:2px solid #e9ecef;background:#fafbfc;flex-wrap:wrap;}\n' +
+'.btn{display:inline-flex;align-items:center;gap:6px;padding:10px 20px;border:none;border-radius:8px;font-size:0.85rem;font-weight:600;cursor:pointer;transition:all 0.2s;font-family:inherit;}\n' +
+'.btn:active{transform:scale(0.97);}\n' +
+'.btn-primary{background:var(--brand);color:#fff;}\n' +
+'.btn-primary:hover{background:var(--brand-dark);}\n' +
+'.btn-outline{background:transparent;color:var(--brand);border:2px solid var(--brand);}\n' +
+'.btn-outline:hover{background:var(--brand-light);}\n' +
+'.btn-submit{background:var(--accent);color:#fff;padding:12px 28px;font-size:0.9rem;}\n' +
+'.btn-submit:hover{background:#0b8043;}\n' +
+'.success-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:1000;align-items:center;justify-content:center;padding:20px;}\n' +
+'.success-overlay.show{display:flex;}\n' +
+'.success-box{background:#fff;border-radius:16px;padding:32px 24px;max-width:440px;width:100%;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,0.3);animation:popIn 0.35s ease;}\n' +
+'@keyframes popIn{from{opacity:0;transform:scale(0.85);}to{opacity:1;transform:scale(1);}}\n' +
+'.success-icon{font-size:3rem;margin-bottom:12px;}\n' +
+'.success-box h2{font-size:1.2rem;color:var(--accent);margin-bottom:8px;}\n' +
+'.success-box p{font-size:0.82rem;color:var(--muted);margin-bottom:20px;}\n' +
+'.data-preview{background:#f8f9fa;border:1px solid #e9ecef;border-radius:8px;padding:12px;text-align:left;max-height:200px;overflow-y:auto;font-size:0.75rem;font-family:\'Courier New\',monospace;margin-bottom:16px;word-break:break-all;}\n' +
+'.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%) translateY(100px);background:#333;color:#fff;padding:10px 20px;border-radius:25px;font-size:0.82rem;font-weight:600;z-index:2000;transition:transform 0.3s ease;pointer-events:none;}\n' +
+'.toast.show{transform:translateX(-50%) translateY(0);}\n' +
+'.toast.success{background:var(--accent);}\n' +
+'.toast.error{background:var(--danger);}\n' +
+'@media(max-width:480px){\n' +
+'  .form-body{padding:16px 14px;}\n' +
+'  .form-nav{padding:12px 14px;}\n' +
+'  .option-row{flex-direction:column;gap:8px;}\n' +
+'  .form-header h1{font-size:1.15rem;}\n' +
+'}\n' +
+'@media print{\n' +
+'  .form-nav,.conn-bar,.gps-btn{display:none!important;}\n' +
+'  .form-header{background:var(--brand)!important;-webkit-print-color-adjust:exact;print-color-adjust:exact;}\n' +
+'  body{background:#fff;}\n' +
+'}\n' +
+'</style>\n' +
+'</head>\n' +
+'<body>\n' +
+'\n' +
+'<div class="form-header">\n' +
+'  <img src="https://github.com/mohamedsillahkanu/gdp-dashboard-2/raw/6c7463b0d5c3be150aafae695a4bcbbd8aeb1499/ICF-SL.jpg" alt="ICF-SL" onerror="this.style.display=\'none\'">\n' +
+'  <h1>' + escHtml(formTitle) + '</h1>\n' +
+'  <p>ICF-SL Data Collection System</p>\n' +
+'</div>\n' +
+'\n' +
+'<div class="form-container">\n' +
+'  <div class="form-card">\n' +
+'    <div class="conn-bar" id="connBar">\n' +
+'      <span id="connIcon">●</span>\n' +
+'      <span id="connText">Checking...</span>\n' +
+'    </div>\n' +
+'\n' +
+'    <form id="dataForm" onsubmit="return handleSubmit(event)" novalidate>\n' +
+'      <div class="form-body">\n' +
+pagesHtml + '\n' +
+'      </div>\n' +
+navHtml + '\n' +
+'    </form>\n' +
+'  </div>\n' +
+'\n' +
+'  <p style="text-align:center;font-size:0.68rem;color:#adb5bd;margin-top:16px;">\n' +
+'    Built with ICF Collect &bull; Informatics Consultancy Firm &mdash; Sierra Leone\n' +
+'  </p>\n' +
+'</div>\n' +
+'\n' +
+'<!-- Success overlay -->\n' +
+'<div class="success-overlay" id="successOverlay">\n' +
+'  <div class="success-box">\n' +
+'    <div class="success-icon">✅</div>\n' +
+'    <h2>Submitted Successfully!</h2>\n' +
+'    <p>Your data has been recorded.</p>\n' +
+'    <div class="data-preview" id="dataPreview"></div>\n' +
+'    <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;">\n' +
+'      <button type="button" class="btn btn-primary" onclick="copyData()">📋 Copy Data</button>\n' +
+'      <button type="button" class="btn btn-outline" onclick="downloadCSV()">⬇ Download CSV</button>\n' +
+'      <button type="button" class="btn btn-submit" onclick="resetForm()">+ New Entry</button>\n' +
+'    </div>\n' +
+'  </div>\n' +
+'</div>\n' +
+'\n' +
+'<!-- Toast -->\n' +
+'<div class="toast" id="toast"></div>\n' +
+'\n' +
+'<script>\n' +
+'var currentPage = 0;\n' +
+'var totalPages = ' + totalPages + ';\n' +
+'var submissions = [];\n' +
+'var lastSubmission = {};\n' +
+'\n' +
+'function updateConn() {\n' +
+'  var bar = document.getElementById("connBar");\n' +
+'  var icon = document.getElementById("connIcon");\n' +
+'  var text = document.getElementById("connText");\n' +
+'  if (navigator.onLine) {\n' +
+'    bar.className = "conn-bar online";\n' +
+'    icon.textContent = "●";\n' +
+'    text.textContent = "Online";\n' +
+'  } else {\n' +
+'    bar.className = "conn-bar offline";\n' +
+'    icon.textContent = "○";\n' +
+'    text.textContent = "Offline — data saved locally";\n' +
+'  }\n' +
+'}\n' +
+'window.addEventListener("online", updateConn);\n' +
+'window.addEventListener("offline", updateConn);\n' +
+'updateConn();\n' +
+'\n' +
+'function showToast(msg, type) {\n' +
+'  var t = document.getElementById("toast");\n' +
+'  t.textContent = msg;\n' +
+'  t.className = "toast show " + (type || "");\n' +
+'  setTimeout(function() { t.className = "toast"; }, 3000);\n' +
+'}\n' +
+'\n' +
+'function showPage(n) {\n' +
+'  var pages = document.querySelectorAll(".form-page");\n' +
+'  for (var i = 0; i < pages.length; i++) pages[i].style.display = i === n ? "block" : "none";\n' +
+'  currentPage = n;\n' +
+'  var pn = document.getElementById("pageNum");\n' +
+'  if (pn) pn.textContent = n + 1;\n' +
+'  var prev = document.getElementById("prevBtn");\n' +
+'  var next = document.getElementById("nextBtn");\n' +
+'  var sub = document.getElementById("submitBtn");\n' +
+'  if (prev) prev.style.visibility = n > 0 ? "visible" : "hidden";\n' +
+'  if (totalPages > 1) {\n' +
+'    if (n === totalPages - 1) {\n' +
+'      if (next) next.style.display = "none";\n' +
+'      if (sub) sub.style.display = "inline-flex";\n' +
+'    } else {\n' +
+'      if (next) next.style.display = "inline-flex";\n' +
+'      if (sub) sub.style.display = "none";\n' +
+'    }\n' +
+'  }\n' +
+'}\n' +
+'\n' +
+'function nextPage() {\n' +
+'  var page = document.getElementById("page-" + currentPage);\n' +
+'  var fields = page.querySelectorAll("[required]");\n' +
+'  var valid = true;\n' +
+'  for (var i = 0; i < fields.length; i++) {\n' +
+'    if (!fields[i].value || !fields[i].value.trim()) {\n' +
+'      fields[i].style.borderColor = "#dc3545";\n' +
+'      fields[i].style.boxShadow = "0 0 0 3px rgba(220,53,69,0.15)";\n' +
+'      valid = false;\n' +
+'      (function(f) { setTimeout(function() { f.style.borderColor = ""; f.style.boxShadow = ""; }, 2500); })(fields[i]);\n' +
+'    }\n' +
+'  }\n' +
+'  if (!valid) { showToast("Please fill in all required fields", "error"); return; }\n' +
+'  if (currentPage < totalPages - 1) showPage(currentPage + 1);\n' +
+'  window.scrollTo({ top: 0, behavior: "smooth" });\n' +
+'}\n' +
+'\n' +
+'function prevPage() {\n' +
+'  if (currentPage > 0) showPage(currentPage - 1);\n' +
+'  window.scrollTo({ top: 0, behavior: "smooth" });\n' +
+'}\n' +
+'\n' +
+'function captureGPS(fieldName) {\n' +
+'  if (!navigator.geolocation) { showToast("Geolocation not supported", "error"); return; }\n' +
+'  showToast("Capturing GPS...", "");\n' +
+'  navigator.geolocation.getCurrentPosition(\n' +
+'    function(pos) {\n' +
+'      var c = pos.coords.latitude.toFixed(6) + ", " + pos.coords.longitude.toFixed(6);\n' +
+'      var inp = document.querySelector(\'input[name="\' + fieldName + \'"]\');\n' +
+'      if (inp) inp.value = c;\n' +
+'      showToast("GPS captured: " + c, "success");\n' +
+'    },\n' +
+'    function(err) { showToast("GPS error: " + err.message, "error"); },\n' +
+'    { enableHighAccuracy: true, timeout: 15000 }\n' +
+'  );\n' +
+'}\n' +
+'\n' +
+'function setRating(fieldName, val) {\n' +
+'  var group = document.querySelector(\'.rating-group[data-field="\' + fieldName + \'"]\');\n' +
+'  if (!group) return;\n' +
+'  group.querySelector("input[type=hidden]").value = val;\n' +
+'  var stars = group.querySelectorAll(".star");\n' +
+'  for (var i = 0; i < stars.length; i++) {\n' +
+'    if (parseInt(stars[i].dataset.val) <= val) stars[i].classList.add("active");\n' +
+'    else stars[i].classList.remove("active");\n' +
+'  }\n' +
+'}\n' +
+'\n' +
+'function getFormData() {\n' +
+'  var form = document.getElementById("dataForm");\n' +
+'  var fd = new FormData(form);\n' +
+'  var data = {};\n' +
+'  for (var pair of fd.entries()) {\n' +
+'    var k = pair[0], v = pair[1];\n' +
+'    if (data[k]) {\n' +
+'      if (Array.isArray(data[k])) data[k].push(v);\n' +
+'      else data[k] = [data[k], v];\n' +
+'    } else { data[k] = v; }\n' +
+'  }\n' +
+'  for (var key in data) {\n' +
+'    if (Array.isArray(data[key])) data[key] = data[key].join(", ");\n' +
+'  }\n' +
+'  return data;\n' +
+'}\n' +
+'\n' +
+'function handleSubmit(e) {\n' +
+'  e.preventDefault();\n' +
+'  var allReq = document.querySelectorAll("[required]");\n' +
+'  var valid = true;\n' +
+'  for (var i = 0; i < allReq.length; i++) {\n' +
+'    if (!allReq[i].value || !allReq[i].value.trim()) {\n' +
+'      allReq[i].style.borderColor = "#dc3545";\n' +
+'      allReq[i].style.boxShadow = "0 0 0 3px rgba(220,53,69,0.15)";\n' +
+'      valid = false;\n' +
+'      var page = allReq[i].closest(".form-page");\n' +
+'      if (page) {\n' +
+'        var pageIdx = parseInt(page.id.replace("page-", ""));\n' +
+'        if (pageIdx !== currentPage) showPage(pageIdx);\n' +
+'      }\n' +
+'      (function(f) { setTimeout(function() { f.style.borderColor = ""; f.style.boxShadow = ""; }, 3000); })(allReq[i]);\n' +
+'    }\n' +
+'  }\n' +
+'  if (!valid) { showToast("Please fill in all required fields", "error"); return false; }\n' +
+'  var data = getFormData();\n' +
+'  data._submittedAt = new Date().toISOString();\n' +
+'  data._submittedBy = "ICF Collect HTML Form";\n' +
+'  lastSubmission = data;\n' +
+'  submissions.push(data);\n' +
+'  try {\n' +
+'    var saved = JSON.parse(localStorage.getItem("icf_submissions_' + safeTitle + '") || "[]");\n' +
+'    saved.push(data);\n' +
+'    localStorage.setItem("icf_submissions_' + safeTitle + '", JSON.stringify(saved));\n' +
+'  } catch(ex) { console.warn("LocalStorage save failed", ex); }\n' +
+'  var preview = document.getElementById("dataPreview");\n' +
+'  if (preview) {\n' +
+'    var h = "";\n' +
+'    for (var k in data) {\n' +
+'      if (k.charAt(0) !== "_") h += "<div><strong>" + k + ":</strong> " + (data[k] || "—") + "</div>";\n' +
+'    }\n' +
+'    preview.innerHTML = h;\n' +
+'  }\n' +
+'  document.getElementById("successOverlay").classList.add("show");\n' +
+'  ' + sheetsSyncCode + '\n' +
+'  return false;\n' +
+'}\n' +
+'\n' +
+'function copyData() {\n' +
+'  var text = JSON.stringify(lastSubmission, null, 2);\n' +
+'  if (navigator.clipboard) {\n' +
+'    navigator.clipboard.writeText(text).then(function() { showToast("Data copied!", "success"); });\n' +
+'  } else {\n' +
+'    var ta = document.createElement("textarea");\n' +
+'    ta.value = text; document.body.appendChild(ta);\n' +
+'    ta.select(); document.execCommand("copy");\n' +
+'    document.body.removeChild(ta);\n' +
+'    showToast("Data copied!", "success");\n' +
+'  }\n' +
+'}\n' +
+'\n' +
+'function downloadCSV() {\n' +
+'  var allData = JSON.parse(localStorage.getItem("icf_submissions_' + safeTitle + '") || "[]");\n' +
+'  if (allData.length === 0) { showToast("No data to export", "error"); return; }\n' +
+'  var keys = Object.keys(allData[0]).filter(function(k) { return k.charAt(0) !== "_"; });\n' +
+'  keys.push("_submittedAt");\n' +
+'  var csv = keys.join(",") + "\\n";\n' +
+'  allData.forEach(function(row) {\n' +
+'    csv += keys.map(function(k) {\n' +
+'      var v = (row[k] || "").toString().replace(/"/g, \'""\')\n' +
+'      return \'"\' + v + \'"\';\n' +
+'    }).join(",") + "\\n";\n' +
+'  });\n' +
+'  var blob = new Blob([csv], { type: "text/csv" });\n' +
+'  var a = document.createElement("a");\n' +
+'  a.href = URL.createObjectURL(blob);\n' +
+'  a.download = "' + safeTitle + '_data.csv";\n' +
+'  a.click();\n' +
+'  showToast("CSV downloaded (" + allData.length + " records)", "success");\n' +
+'}\n' +
+'\n' +
+'function resetForm() {\n' +
+'  document.getElementById("successOverlay").classList.remove("show");\n' +
+'  document.getElementById("dataForm").reset();\n' +
+'  var stars = document.querySelectorAll(".star");\n' +
+'  for (var i = 0; i < stars.length; i++) stars[i].classList.remove("active");\n' +
+'  if (totalPages > 1) showPage(0);\n' +
+'  window.scrollTo({ top: 0, behavior: "smooth" });\n' +
+'}\n' +
+'\n' +
+'document.addEventListener("DOMContentLoaded", function() {\n' +
+'  if (totalPages > 1) showPage(0);\n' +
+'});\n' +
+'</' + 'script>\n' +
+'</body>\n' +
+'</html>';
+
+    // Trigger download
+    var blob = new Blob([htmlContent], { type: 'text/html;charset=utf-8' });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = safeTitle + '.html';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+
+    showNotification('Form downloaded as ' + safeTitle + '.html!', 'success');
+}
+
+// ============================================
 // URL HANDLING & ONLINE STATUS
 // ============================================
 
@@ -1545,6 +2082,8 @@ window.exitViewer = exitViewer;
 window.loadForm = loadForm;
 window.deleteFormAndRefresh = deleteFormAndRefresh;
 window.previewFormById = previewFormById;
+window.downloadFormById = downloadFormById;
+window.downloadFormAsHtml = downloadFormAsHtml;
 window.addField = addField;
 window.selectField = selectField;
 window.deleteField = deleteField;
@@ -1572,4 +2111,4 @@ window.prevPage = prevPage;
 window.submitViewerForm = submitViewerForm;
 window.sanitizeForId = sanitizeForId;
 
-console.log('ICF Collect v3.1 loaded');
+console.log('ICF Collect v3.2 loaded');
